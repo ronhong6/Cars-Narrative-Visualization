@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Cars Narrative Visualization</title>
+  </head>
+  <body onload="init()">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+      circle {
+        fill: lightblue;
+        stroke: black;
+      }
+      #tooltip {
+        opacity: 0;
+        position: absolute;
+        background: white;
+      }
+    </style>
+    <div style="width: 960px;">
+      <h1 style="width: 960px; text-align: center;">
+        Visualization of Fuel Efficiency
+      </h1>
+      <p>
+        The scatterplot below compares the highway and city fuel efficiencies,
+        in miles per gallon, for cars in 2017.
+        Three categories are provided for filtering the scatterplot,
+        to aid in exploring the data.
+      </p>
+    </div>
+    <div style="float: left; width: 576px;">
+      <svg width=576 height=576></svg>
+      <div id="tooltip"></div>
+      <script>
+        async function init() {
+          data = await d3.csv("cars2017.csv");
+          var maxMPG = 150;
+          var minMPG = 10;
+          var margin = 48;
+          var plotDim = 480;
+          var r = 6;
+          d3.select("svg").append("text").attr("text-anchor", "middle")
+          .attr("x", plotDim / 2 + margin).attr("y", margin / 2)
+          .text("Average Highway MPG vs Average City MPG")
+          .attr("font-size", "large");
+          d3.select("svg").append("g")
+          .attr("transform", "translate(" + margin + ", " + (plotDim + margin) + ")")
+          .call(d3.axisBottom(d3.scaleLog().domain([minMPG, maxMPG])
+          .range([0, plotDim])).tickFormat(d3.format(1)));
+          d3.select("svg").append("text").attr("text-anchor", "middle")
+          .attr("x", plotDim / 2 + margin).attr("y", plotDim + 7 * margin / 4)
+          .text("Average City MPG");
+          d3.select("svg").append("g")
+          .attr("transform", "translate(" + margin + ", " + margin + ")")
+          .call(d3.axisLeft(d3.scaleLog().domain([minMPG, maxMPG])
+          .range([plotDim, 0])).tickFormat(d3.format(1)));
+          d3.select("svg").append("text").attr("text-anchor", "middle")
+          .attr("transform", "rotate(-90)")
+          .attr("x", -plotDim / 2 - margin).attr("y", margin / 4)
+          .text("Average Highway MPG");
+          d3.select("svg").append("g")
+          .attr("transform", "translate(" + margin + ", " + margin + ")")
+          .selectAll("circle").data(data).enter().append("circle")
+          .attr("Make", function(d) {
+            return d.Make;
+          })
+          .attr("Fuel", function(d) {
+            return d.Fuel;
+          })
+          .attr("EngineCylinders", function(d) {
+            return d.EngineCylinders;
+          })
+          .attr("cx", function(d) {
+            return plotDim * (Math.log(d.AverageCityMPG) - Math.log(minMPG))
+            / (Math.log(maxMPG) - Math.log(minMPG));
+          })
+          .attr("cy", function(d) {
+            return plotDim * (1 - (Math.log(d.AverageHighwayMPG) - Math.log(minMPG))
+            / (Math.log(maxMPG) - Math.log(minMPG)));
+          }).attr("r", r);
+          d3.selectAll("circle").data(data).on("mouseover", function(d) {
+            d3.select("#tooltip").style("opacity", 1).style("border-style", "solid")
+            .style("left", d3.event.pageX + "px")
+            .style("top", d3.event.pageY + "px")
+            .html(d.Make + "<br>" + d.Fuel + "<br>" + d.EngineCylinders
+            + " Cylinders<br>Average Highway MPG: " + d.AverageHighwayMPG
+            + "<br>Average City MPG: " + d.AverageCityMPG);
+          }).on("mouseout", function() {
+            d3.select("#tooltip").style("border-style", "none").html("");
+          })
+          var select = new Set();
+          d3.selectAll("input").on("change", function(d) {
+            select.clear();
+            d3.selectAll("circle").transition().attr("r", r);
+            if (this.value == "Make") {
+              var values = d3.map(data, function(d){
+                return d.Make;
+              }).keys();
+              var str = "The most fuel efficient car is made by Hyundai. "
+              + "The least fuel efficient cars are made by Ferrari and Lamborghini."
+              + "<br><br><div style=\"float: left; width: 192px;\">";
+              for (let i = 0; i < values.length / 2; i++) {
+                str += "<input type=\"checkbox\" id=\"filter\" value=\""
+                + values[i] + "\">" + values[i] + "<br>";
+              }
+              str += "</div><div style=\"float: left; width: 192px;\">";
+              for (let i = values.length / 2; i < values.length; i++) {
+                str += "<input type=\"checkbox\" id=\"filter\" value=\""
+                + values[i] + "\">" + values[i] + "<br>";
+              }
+              str += "</div>";
+              document.getElementById("div1").innerHTML = str;
+              d3.selectAll("#filter").on("change", function() {
+                d3.selectAll("#filter").each(function(d) {
+                  value = this.value;
+                  if(this.checked) {
+                    if (select.size == 0) {
+                      d3.selectAll("circle").transition().attr("r", 0);
+                    }
+                    select.add(value);
+                    d3.selectAll("circle").filter(function(d) {
+                      return d.Make == value;
+                    }).transition().attr("r", r);
+                  }
+                  else {
+                    d3.selectAll("circle").filter(function(d) {
+                      return d.Make == value;
+                    }).transition().attr("r", 0);
+                    select.delete(value);
+                    if (select.size == 0) {
+                      d3.selectAll("circle").transition().attr("r", r);
+                    }
+                  }
+                })
+              });
+            }
+            if (this.value == "Fuel") {
+              var values = d3.map(data, function(d){
+                return d.Fuel;
+              }).keys().sort();
+              var str = "Electric cars are always more fuel efficient"
+              + " than gasoline and diesel cars, "
+              + "while diesel cars are usually more fuel efficient"
+              + " than gasoline cars.<br><br>";
+              for (let i in values) {
+                str += "<input type=\"checkbox\" id=\"filter\" value=\""
+                + values[i] + "\">" + values[i] + "<br>";
+              }
+              document.getElementById("div1").innerHTML = str;
+              d3.selectAll("#filter").on("change", function() {
+                d3.selectAll("#filter").each(function(d) {
+                  value = this.value;
+                  if(this.checked) {
+                    if (select.size == 0) {
+                      d3.selectAll("circle").transition().attr("r", 0);
+                    }
+                    select.add(value);
+                    d3.selectAll("circle").filter(function(d) {
+                      return d.Fuel == value;
+                    }).transition().attr("r", r);
+                  }
+                  else {
+                    d3.selectAll("circle").filter(function(d) {
+                      return d.Fuel == value;
+                    }).transition().attr("r", 0);
+                    select.delete(value);
+                    if (select.size == 0) {
+                      d3.selectAll("circle").transition().attr("r", r);
+                    }
+                  }
+                })
+              });
+            }
+            if (this.value == "EngineCylinders") {
+              var values = d3.map(data, function(d){
+                return d.EngineCylinders;
+              }).keys().sort(function(a, b) {
+                return a - b
+              });
+              var str = "Fuel efficiency usually decreases "
+              + "as the number of cylinders increases.<br><br>";
+              for (let i in values) {
+                str += "<input type=\"checkbox\" id=\"filter\" value=\""
+                + values[i] + "\">" + values[i] + "<br>";
+              }
+              document.getElementById("div1").innerHTML = str;
+              d3.selectAll("#filter").on("change", function() {
+                d3.selectAll("#filter").each(function(d) {
+                  value = this.value;
+                  if(this.checked) {
+                    if (select.size == 0) {
+                      d3.selectAll("circle").transition().attr("r", 0);
+                    }
+                    select.add(value);
+                    d3.selectAll("circle").filter(function(d) {
+                      return d.EngineCylinders == value;
+                    }).transition().attr("r", r);
+                  }
+                  else {
+                    d3.selectAll("circle").filter(function(d) {
+                      return d.EngineCylinders == value;
+                    }).transition().attr("r", 0);
+                    select.delete(value);
+                    if (select.size == 0) {
+                      d3.selectAll("circle").transition().attr("r", r);
+                    }
+                  }
+                })
+              });
+            }
+          });
+        }
+      </script>
+    </div>
+    <div style="float: left; width: 384px;">
+      <h3>
+        <input type="radio" name="category" value="Make">Make
+        <input type="radio" name="category" value="Fuel">Fuel
+        <input type="radio" name="category" value="EngineCylinders">Number of Cylinders
+      </h3>
+      <div id = "div1" style="float: left; width: 384px;">
+        Select any category to begin exploring the data.
+        <br>
+        Once a category is selected, filters will appear.
+      </div>
+    </div>
+  </body>
+</html>
