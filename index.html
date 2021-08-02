@@ -78,18 +78,41 @@
             return plotDim * (1 - (Math.log(d.AverageHighwayMPG) - Math.log(minMPG))
             / (Math.log(maxMPG) - Math.log(minMPG)));
           }).attr("r", r);
+          var category;
           d3.selectAll("circle").data(data).on("mouseover", function(d) {
+            var str = "";
+            if (category == "Make") {
+              str += "<strong>" + d.Make + "</strong>";
+            }
+            else {
+              str += d.Make;
+            }
+            str += "<br>"
+            if (category == "Fuel") {
+              str += "<strong>" + d.Fuel + "</strong>";
+            }
+            else {
+              str += d.Fuel;
+            }
+            str += "<br>"
+            if (category == "EngineCylinders") {
+              str += "<strong>" + d.EngineCylinders + " Cylinders" + "</strong>";
+            }
+            else {
+              str += d.EngineCylinders + " Cylinders";
+            }
+            str += "<br>"
+            str += "Average Highway MPG: " + d.AverageHighwayMPG
+            + "<br>Average City MPG: " + d.AverageCityMPG
             d3.select("#tooltip").style("opacity", 1).style("border-style", "solid")
             .style("left", d3.event.pageX + "px")
-            .style("top", d3.event.pageY + "px")
-            .html(d.Make + "<br>" + d.Fuel + "<br>" + d.EngineCylinders
-            + " Cylinders<br>Average Highway MPG: " + d.AverageHighwayMPG
-            + "<br>Average City MPG: " + d.AverageCityMPG);
+            .style("top", d3.event.pageY + "px").html(str);
           }).on("mouseout", function() {
             d3.select("#tooltip").style("border-style", "none").html("");
           })
           var select = new Set();
           d3.selectAll("input").on("change", function(d) {
+            category = this.value;
             select.clear();
             d3.selectAll("circle").transition().attr("r", r);
             if (this.value == "Make") {
@@ -219,7 +242,7 @@
         <input type="radio" name="category" value="EngineCylinders">Number of Cylinders
       </h3>
       <div id = "div1" style="float: left; width: 384px;">
-        Select any category to begin exploring the data.
+        Select any category to begin the presentation.
         <br>
         Once a category is selected, filters will appear.
       </div>
